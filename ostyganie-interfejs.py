@@ -27,6 +27,8 @@ elif system() == 'Linux':
 else:
     port = 'Wpisz nazwę portu'
     
+defaultTime = 5
+    
 # ZMIENNE GLOBALNE
 connected = False   # Przechowywanie informacji o połączeniu
 
@@ -35,8 +37,9 @@ connected = False   # Przechowywanie informacji o połączeniu
 # LAYOUTY ------------------------------------------------------------------------------------------
 
 # Wymiary
-inputTextSize = (20, 1)
-labelSize = (13, 1)
+windowInfo = {'element_justification':'left', 'finalize':'True'}
+inputTextSize = (25, 1)
+labelSize = (25, 1)
 labelSize2 = (10, 1)
 multilineSize = (40, 14)
 outputTextInfo = {'size':(8, 1), 'background_color':'black', 'text_color':'red', 'font':('Arial', 20), 'justification':'right'}
@@ -82,9 +85,9 @@ programLayout = [
     ])  ],
     
     # Wybór portu
-    [psg.Text('Port')],
-    [psg.InputText(default_text = port, key = 'portInputText')],
-    [psg.Button('Połącz', key = 'connectButton')]
+    [psg.Text('Port', labelSize), psg.InputText(default_text = port, key = 'portInputText', size = inputTextSize)],
+    [psg.Text('Częstotliwość pomiaru [s]', labelSize), psg.InputText(default_text = defaultTime, key = 'timeInputText', size = inputTextSize)],
+    [psg.Button('Połącz', key = 'connectButton'), psg.Button('Rozłącz', key = 'disconnectButton')]
     
 ]
 
@@ -97,9 +100,30 @@ def connect(port):
         arduino = serial.Serial(port, baudrate = baudrate_value, timeout = 1)
         connected = True
         print('Połączono z Arduino')
+        sleep(0.5)
+        sendTime()  # Wysłanie danych o częstotliwości pomiaru
+        
     except Exception as e:  # W przypadku gdy nie udało się nawiązać połączenia
                 psg.popup('Błąd połączenia\n' + str(e))
                 
+# Wysyłanie danych o częstotliwości pomiaru
+def sendTime():
+    try:
+        timeToSend = int(window['timeInputText'].Get())
+        print(timeToSend)
+        if int(timeToSend) > 0: # sprawdzenie czy wartość czasu jest większa od zera
+            arduino.write(str(timeToSend).encode())
+            sleep(1)
+            arduino.flush()
+            if arduino.inWaiting() != 0:
+                print(str(arduino.readline()))
+        else:
+            raise ValueError()  # Wyświetlenie błędu
+            
+    except Exception as e:  # Obsługa błędów
+        psg.popup('Błąd, nie udało się wysłać\n' + (str(e)))
+        del(e)
+        
 # Zapis danych z okna pomiaru w pliku
 def saveFile():
     try:    # Zapis danych do pliku
@@ -134,7 +158,7 @@ def draw_figure(canvas, figure):
 # PROGRAM
 
 # Utworzenie okna
-window = psg.Window('Pomiar temperatury', programLayout, finalize = True)
+window = psg.Window('Pomiar temperatury', programLayout, **windowInfo)
 
 # Wyświetlnenie początkowego tekstu w oknie pomiarów
 window['simMultiline'].print('Czas [HH:MM:SS]; T0 [*C]; T1 [*C]; T2 [*C]')
@@ -175,10 +199,15 @@ while True:
         # Przycisk połączenia
         if event == 'connectButton':
             connect(port)
-        
+        # Przycisk rozłączenia   
+        elif event == 'disconnectButton':
+            connected = False
+            
         # Przycisk zapisywania
         elif event == 'SaveButton': 
             saveFile()
+        
+            arduino.close()
         
         else:
             try:
