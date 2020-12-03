@@ -100,7 +100,7 @@ def connect(port):
         arduino = serial.Serial(port, baudrate = baudrate_value, timeout = 1)
         connected = True
         print('Połączono z Arduino')
-        sleep(0.5)
+        sleep(5)
         sendTime()  # Wysłanie danych o częstotliwości pomiaru
         
     except Exception as e:  # W przypadku gdy nie udało się nawiązać połączenia
@@ -113,9 +113,12 @@ def sendTime():
         print(timeToSend)
         if int(timeToSend) > 0: # sprawdzenie czy wartość czasu jest większa od zera
             arduino.write(str(timeToSend).encode())
-            sleep(1)
+            print('Wysłano')
+            sleep(0.5)
             arduino.flush()
+            print('Oczekiwanie na odbiór')
             if arduino.inWaiting() != 0:
+                print('odebrane dane')
                 print(str(arduino.readline()))
         else:
             raise ValueError()  # Wyświetlenie błędu
@@ -198,6 +201,7 @@ while True:
             
         # Przycisk połączenia
         if event == 'connectButton':
+            port = str(window['portInputText'].Get())
             connect(port)
         # Przycisk rozłączenia   
         elif event == 'disconnectButton':
