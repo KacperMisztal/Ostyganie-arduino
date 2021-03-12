@@ -198,6 +198,7 @@ while True:
             
         # Przycisk połączenia
         if event == 'connectButton':
+            port = values['portInputText']
             connect(port)
         # Przycisk rozłączenia   
         elif event == 'disconnectButton':
