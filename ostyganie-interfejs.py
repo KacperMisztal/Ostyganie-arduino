@@ -5,6 +5,7 @@ Użyto elementów z: https://github.com/PySimpleGUI/PySimpleGUI/blob/master/Demo
 
 # IMPORT MODUŁÓW
 import serial   # Komunikacja przez porty szeregowe
+import serial.tools.list_ports	# Szukanie dostępnych portów szeregowych
 from time import sleep  # Oczekiwanie
 from re import sub  # Usuwanie zbędnych znaków
 import PySimpleGUI as psg   # GUI
@@ -13,6 +14,7 @@ import matplotlib as mpl # Wykresy
 import matplotlib.pyplot as plt # Też wykresy
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, FigureCanvasAgg
 from matplotlib.figure import Figure
+
 
 mpl.use('TkAgg')
 
@@ -45,7 +47,7 @@ multilineSize = (40, 14)
 outputTextInfo = {'size':(8, 1), 'background_color':'black', 'text_color':'red', 'font':('Arial', 20), 'justification':'right'}
 saveTextBoxSize = (19, 1)
 plotCanvasInfo = {'background_color':'white'}
-figSize = [2.0, 2.0]
+figSize = [2.5, 2.5]
 
 programLayout = [  
     # Lewa kolumna
@@ -85,8 +87,11 @@ programLayout = [
     ])  ],
     
     # Wybór portu
-    [psg.Text('Port', labelSize), psg.InputText(default_text = port, key = 'portInputText', size = inputTextSize)],
-    [psg.Text('Częstotliwość pomiaru [s]', labelSize), psg.InputText(default_text = defaultTime, key = 'timeInputText', size = inputTextSize)],
+    [psg.Text('Port', labelSize)],
+    [psg.Combo(values=[], key='comList'), psg.Button('Ok', key='portOkButton'), psg.Button('Odśwież', key='portRefreshButton')],
+    [psg.InputText(default_text = port, key = 'portInputText', size = inputTextSize)],
+    [psg.Text('Częstotliwość pomiaru [s]', labelSize)], 
+    [psg.InputText(default_text = defaultTime, key = 'timeInputText', size = inputTextSize)],
     [psg.Button('Połącz', key = 'connectButton'), psg.Button('Rozłącz', key = 'disconnectButton')]
     
 ]
@@ -155,6 +160,10 @@ def draw_figure(canvas, figure):
     figure_canvas_agg.get_tk_widget().pack(side='top')
     return figure_canvas_agg
     
+def list_com_win():
+    out = [comport.device for comport in serial.tools.list_ports.comports()]
+    return out
+    
 # PROGRAM
 
 # Utworzenie okna
@@ -189,7 +198,7 @@ fig_agg2 = draw_figure(canvas2, fig2)
 
 # Pętla okna programu
 while True:
-        event, values = window.read(timeout=100)    # Odczyt wartości, limit czasu 100 ms
+        event, values = window.read(timeout=500)    # Odczyt wartości, limit czasu 500 ms
         
         # Przycisk zamykania okna
         if event == psg.WIN_CLOSED: 
@@ -202,13 +211,23 @@ while True:
             connect(port)
         # Przycisk rozłączenia   
         elif event == 'disconnectButton':
+            arduino.close()
             connected = False
             
         # Przycisk zapisywania
         elif event == 'SaveButton': 
             saveFile()
-        
-            arduino.close()
+            
+        # Przycisk odświeżenia portu
+        elif event == 'portRefreshButton': 
+            if system() == 'Windows':
+                    values['comList'] = list_com_win()
+                    window.FindElement('comList').Update(values=list_com_win())
+                    
+        # Przycisk zatwierdzenia portu (Ok)
+        elif event == 'portOkButton':
+            window['portInputText'].update(values['comList'])
+            print('OK!' + values['comList'])
         
         else:
             try:
@@ -248,7 +267,8 @@ while True:
                     ax2.cla()
                     ax2.plot(t2_values)
                     fig_agg2.draw()
-                    
+                
+					     
             except Exception as e:  # Obsługa błędów
                 print('Błąd\n' + str(e))
             
