@@ -46,7 +46,7 @@ void setup(void)
   while(true){
     if(Serial.available()){
       delayTime = Serial.parseInt() * 1000;
-      Serial.println(delayTime);
+      //Serial.println(delayTime);
       break;
   }
   

@@ -22,12 +22,7 @@ mpl.use('TkAgg')
 
 baudrate_value = 115200 # Prędkość przesyłu danych
 
-if system() == 'Windows':   # Domyślny port
-    port = 'COM1'   # Port - Windows
-elif system() == 'Linux':
-    port = '/dev/ttyACM0'   # Port - Linux
-else:
-    port = 'Wpisz nazwę portu'
+port = 'Wybierz port lub wpisz nazwę'
     
 defaultTime = 5
     
@@ -69,7 +64,8 @@ programLayout = [
         # Wykresy    
         [psg.Canvas(key = 'plotCanvas0', **plotCanvasInfo),
         psg.Canvas(key = 'plotCanvas1', **plotCanvasInfo),
-        psg.Canvas(key = 'plotCanvas2', **plotCanvasInfo)]
+        psg.Canvas(key = 'plotCanvas2', **plotCanvasInfo)],
+        [psg.Text('\n\n')]   # Tekst do wyrównywania
     ]),
         
         
@@ -88,7 +84,7 @@ programLayout = [
     
     # Wybór portu
     [psg.Text('Port', labelSize)],
-    [psg.Combo(values=[], key='comList'), psg.Button('Ok', key='portOkButton'), psg.Button('Odśwież', key='portRefreshButton')],
+    [psg.Combo(values=[], key='portList', size = labelSize), psg.Button('Ok', key='portOkButton'), psg.Button('Odśwież', key='portRefreshButton')],
     [psg.InputText(default_text = port, key = 'portInputText', size = inputTextSize)],
     [psg.Text('Częstotliwość pomiaru [s]', labelSize)], 
     [psg.InputText(default_text = defaultTime, key = 'timeInputText', size = inputTextSize)],
@@ -209,6 +205,7 @@ while True:
         if event == 'connectButton':
             port = values['portInputText']
             connect(port)
+            
         # Przycisk rozłączenia   
         elif event == 'disconnectButton':
             arduino.close()
@@ -220,14 +217,14 @@ while True:
             
         # Przycisk odświeżenia portu
         elif event == 'portRefreshButton': 
-            if system() == 'Windows':
-                    values['comList'] = list_com_win()
-                    window.FindElement('comList').Update(values=list_com_win())
+            #if system() == 'Windows':
+            values['portList'] = list_com_win()
+            window.FindElement('portList').Update(values=list_com_win())
                     
         # Przycisk zatwierdzenia portu (Ok)
         elif event == 'portOkButton':
-            window['portInputText'].update(values['comList'])
-            print('OK!' + values['comList'])
+            window['portInputText'].update(values['portList'])
+            print('OK!' + values['portList'])
         
         else:
             try:
