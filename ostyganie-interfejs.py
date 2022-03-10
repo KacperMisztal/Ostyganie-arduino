@@ -9,11 +9,12 @@ import serial.tools.list_ports	# Szukanie dostępnych portów szeregowych
 from time import sleep  # Oczekiwanie
 from re import sub  # Usuwanie zbędnych znaków
 import PySimpleGUI as psg   # GUI
-from platform import system # sprawdzanie systemu operacyjnego - do prawidłowego zapisu
+#from platform import system # sprawdzanie systemu operacyjnego - do prawidłowego zapisu
 import matplotlib as mpl # Wykresy
 import matplotlib.pyplot as plt # Też wykresy
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, FigureCanvasAgg
 from matplotlib.figure import Figure
+from layout import programLayout, windowInfo, figSize
 
 
 mpl.use('TkAgg')
@@ -24,73 +25,8 @@ baudrate_value = 115200 # Prędkość przesyłu danych
 
 port = 'Wybierz port lub wpisz nazwę'
     
-defaultTime = 5
-    
 # ZMIENNE GLOBALNE
 connected = False   # Przechowywanie informacji o połączeniu
-
-
-
-# LAYOUTY ------------------------------------------------------------------------------------------
-
-# Wymiary
-windowInfo = {'element_justification':'left', 'finalize':'True'}
-inputTextSize = (25, 1)
-labelSize = (25, 1)
-labelSize2 = (10, 1)
-multilineSize = (40, 14)
-outputTextInfo = {'size':(8, 1), 'background_color':'black', 'text_color':'red', 'font':('Arial', 20), 'justification':'right'}
-saveTextBoxSize = (19, 1)
-plotCanvasInfo = {'background_color':'white'}
-figSize = [2.5, 2.5]
-
-programLayout = [  
-    # Lewa kolumna
-    [psg.Column([
-        # Liczniki
-        [psg.Column([   
-            [psg.Text('Czas [HH:MM:SS]')],
-            [psg.Text(**outputTextInfo, key = 'outputText0')]   ]),
-        psg.Column([   
-            [psg.Text('T0 [*C]')],
-            [psg.Text(**outputTextInfo, key = 'outputText1')]   ]),
-        psg.Column([   
-            [psg.Text('T1 [*C]')],
-            [psg.Text(**outputTextInfo, key = 'outputText2')]   ]),
-        psg.Column([   
-            [psg.Text('T2 [*C]')],
-            [psg.Text(**outputTextInfo, key = 'outputText3')]   ])  ],
-        
-        # Wykresy    
-        [psg.Canvas(key = 'plotCanvas0', **plotCanvasInfo),
-        psg.Canvas(key = 'plotCanvas1', **plotCanvasInfo),
-        psg.Canvas(key = 'plotCanvas2', **plotCanvasInfo)],
-        [psg.Text('\n\n')]   # Tekst do wyrównywania
-    ]),
-        
-        
-        # Prawa kolumna
-    psg.Column([   
-        # Lista zebranych danych 
-        [psg.Text('Pomiary', key='simText1')],
-        [psg.Multiline(key = 'simMultiline', size=multilineSize, disabled = False, autoscroll = True)],
-        
-        # Pola do zapisywania
-        [psg.Text('Nazwa pliku: ', size=labelSize2), psg.InputText(size = saveTextBoxSize, key = 'fileInputText')],
-        [psg.Text('Folder: ', size=labelSize2), psg.InputText(key = 'dirInputText', size = saveTextBoxSize), psg.FolderBrowse('Szukaj', key = 'browseButton')],
-        [psg.Checkbox('Zamiana kropek na przecinki', key = 'comaCheckBox')],
-        [psg.Button('Zapisz', key = 'SaveButton')]
-    ])  ],
-    
-    # Wybór portu
-    [psg.Text('Port', labelSize)],
-    [psg.Combo(values=[], key='portList', size = labelSize), psg.Button('Ok', key='portOkButton'), psg.Button('Odśwież', key='portRefreshButton')],
-    [psg.InputText(default_text = port, key = 'portInputText', size = inputTextSize)],
-    [psg.Text('Częstotliwość pomiaru [s]', labelSize)], 
-    [psg.InputText(default_text = defaultTime, key = 'timeInputText', size = inputTextSize)],
-    [psg.Button('Połącz', key = 'connectButton'), psg.Button('Rozłącz', key = 'disconnectButton')]
-    
-]
 
 # FUNKCJE
 
@@ -119,7 +55,9 @@ def sendTime():
             if arduino.inWaiting() != 0:
                 print(str(arduino.readline()))
         else:
+            psg.popup('Czas musi być dodatnią liczbą całkowitą!')
             raise ValueError()  # Wyświetlenie błędu
+
             
     except Exception as e:  # Obsługa błędów
         psg.popup('Błąd, nie udało się wysłać\n' + (str(e)))
@@ -128,10 +66,10 @@ def sendTime():
 # Zapis danych z okna pomiaru w pliku
 def saveFile():
     try:    # Zapis danych do pliku
-        fileName = str(window['dirInputText'].Get()) + '/' + str(window['fileInputText'].Get())
+        fileName = str(window['fileInputText'].Get())
 
-        if system() == 'Windows':   # Zmiana slash na backslash na Windowsie
-            fileName.replace('/', '\\')
+        #if system() == 'Windows':   # Zmiana slash na backslash na Windowsie
+        #    fileName.replace('/', '\\')
 
         text = str(window['simMultiline'].Get())  # Odczyt danych z okna pomiaru
 
@@ -162,116 +100,106 @@ def list_com_win():
     
 # PROGRAM
 
-# Utworzenie okna
-window = psg.Window('Pomiar temperatury', programLayout, **windowInfo)
+if __name__ == '__main__':
+    # Utworzenie okna
+    window = psg.Window('Pomiar temperatury', programLayout, **windowInfo)
 
-# Wyświetlnenie początkowego tekstu w oknie pomiarów
-window['simMultiline'].print('Czas [HH:MM:SS]; T0 [*C]; T1 [*C]; T2 [*C]')
+    # Wyświetlnenie początkowego tekstu w oknie pomiarów
+    window['simMultiline'].print('Czas [HH:MM:SS]; T0 [*C]; T1 [*C]; T2 [*C]')
 
-# Utworzenie zmiennych dla wykresów
-t0_values, t1_values, t2_values = [], [], []
+    # Utworzenie zmiennych dla wykresów
+    t0_values, t1_values, t2_values = [], [], []
 
-# Utworzenie wykresów
-canvas_elem0 = window.FindElement('plotCanvas0')
-canvas0 = canvas_elem0.TKCanvas
-fig0 = Figure(figsize = figSize, tight_layout = True)
-ax0 = fig0.add_subplot()
-fig_agg0 = draw_figure(canvas0, fig0)
+    # Utworzenie wykresów
+    canvas_elem0 = window['plotCanvas0']
+    canvas0 = canvas_elem0.TKCanvas
+    fig0 = Figure(figsize = figSize, tight_layout = False)
+    ax0 = fig0.add_subplot()
+    fig_agg0 = draw_figure(canvas0, fig0)
 
-canvas_elem1 = window.FindElement('plotCanvas1')
-canvas1 = canvas_elem1.TKCanvas
-fig1 = Figure(figsize = figSize, tight_layout = True)
-ax1 = fig1.add_subplot()
-fig_agg1 = draw_figure(canvas1, fig1)
+    canvas_elem1 = window['plotCanvas1']
+    canvas1 = canvas_elem1.TKCanvas
+    fig1 = Figure(figsize = figSize, tight_layout = False)
+    ax1 = fig1.add_subplot()
+    fig_agg1 = draw_figure(canvas1, fig1)
 
-canvas_elem2 = window.FindElement('plotCanvas2')
-canvas2 = canvas_elem2.TKCanvas
-fig2 = Figure(figsize = figSize, tight_layout = True)
-ax2 = fig2.add_subplot()
-fig_agg2 = draw_figure(canvas2, fig2)
+    canvas_elem2 = window['plotCanvas2']
+    canvas2 = canvas_elem2.TKCanvas
+    fig2 = Figure(figsize = figSize, tight_layout = False)
+    ax2 = fig2.add_subplot()
+    fig_agg2 = draw_figure(canvas2, fig2)
 
+    # Pętla okna programu
+    while True:
+            event, values = window.read(timeout=500)    # Odczyt wartości, limit czasu 500 ms
 
+            # Przycisk zamykania okna
+            if event == psg.WIN_CLOSED: 
+                arduino.close() # Zamknięcie połączenia z Arduino
+                break
 
-# Pętla okna programu
-while True:
-        event, values = window.read(timeout=500)    # Odczyt wartości, limit czasu 500 ms
-        
-        # Przycisk zamykania okna
-        if event == psg.WIN_CLOSED: 
-            arduino.close() # Zamknięcie połączenia z Arduino
-            break
-            
-        # Przycisk połączenia
-        if event == 'connectButton':
-            port = values['portInputText']
-            connect(port)
-            
-        # Przycisk rozłączenia   
-        elif event == 'disconnectButton':
-            arduino.close()
-            connected = False
-            
-        # Przycisk zapisywania
-        elif event == 'SaveButton': 
-            saveFile()
-            
-        # Przycisk odświeżenia portu
-        elif event == 'portRefreshButton': 
-            #if system() == 'Windows':
-            values['portList'] = list_com_win()
-            window.FindElement('portList').Update(values=list_com_win())
-                    
-        # Przycisk zatwierdzenia portu (Ok)
-        elif event == 'portOkButton':
-            window['portInputText'].update(values['portList'])
-            print('OK!' + values['portList'])
-        
-        else:
-            try:
-                if connected == True and arduino.inWaiting() != 0:  # Sprawdzenie połączenia i informacji o oczekujących danych
-                    newValue = str(arduino.readline())  # Odczyt linii danych
-                    newValue = sub('[^\d\.\;\ \:]', '', newValue)   # Usunięcie nieporządanych znaków
-                    print(newValue)
-                    try:
-                        [time, temp0, temp1, temp2] = newValue.split('; ')  # Rozdzielenie danych do odpowiednich zmiennych
-                    except Exception as e:
-                        print('Błąd\n' + str(e))
-                    
-                    # Aktualizacja stanu wyświetlaczy
-                    window['outputText0'].update(value = time)
-                    window['outputText1'].update(value = temp0)
-                    window['outputText2'].update(value = temp1)
-                    window['outputText3'].update(value = temp2)
-                    
-                    # Aktualizacja zmiennych dla wykresów
-                    t0_values.append(float(temp0))
-                    t1_values.append(float(temp1))
-                    t2_values.append(float(temp2))
-                    
-                    
-                    # Dodanie nowej wartości do okna pomiarów
-                    window['simMultiline'].print(newValue)
-                    
-                    # Rysowanie wykresów
-                    ax0.cla()   # Wyczyszczenie
-                    ax0.plot(t0_values) # Wykres
-                    fig_agg0.draw() # Rysowanie
-                    
-                    ax1.cla()
-                    ax1.plot(t1_values)
-                    fig_agg1.draw()
-                    
-                    ax2.cla()
-                    ax2.plot(t2_values)
-                    fig_agg2.draw()
-                
-					     
-            except Exception as e:  # Obsługa błędów
-                print('Błąd\n' + str(e))
-            
-#Zamknięcie okna
-window.close
+            # Przycisk połączenia
+            if event == 'connectButton':
+                port = values['portList']
+                connect(port)
+
+            # Przycisk rozłączenia   
+            elif event == 'disconnectButton':
+                arduino.close()
+                connected = False
+
+            # Przycisk zapisywania
+            elif event == 'SaveButton': 
+                saveFile()
+
+            # Przycisk odświeżenia portu
+            elif event == 'portRefreshButton': 
+                #if system() == 'Windows':
+                values['portList'] = list_com_win()
+                window['portList'].Update(values=list_com_win())
+
+            else:
+                try:
+                    if connected == True and arduino.inWaiting() != 0:  # Sprawdzenie połączenia i informacji o oczekujących danych
+                        newValue = str(arduino.readline())  # Odczyt linii danych
+                        newValue = sub('[^\d\.\;\ \:]', '', newValue)   # Usunięcie nieporządanych znaków
+                        print(newValue)
+                        try:
+                            [time, temp0, temp1, temp2] = newValue.split('; ')  # Rozdzielenie danych do odpowiednich zmiennych
+                        except Exception as e:
+                            print('Błąd\n' + str(e))
+
+                        # Aktualizacja stanu wyświetlaczy
+                        window['outputText0'].update(value = time)
+                        window['outputText1'].update(value = temp0)
+                        window['outputText2'].update(value = temp1)
+                        window['outputText3'].update(value = temp2)
+
+                        # Aktualizacja zmiennych dla wykresów
+                        t0_values.append(float(temp0))
+                        t1_values.append(float(temp1))
+                        t2_values.append(float(temp2))
 
 
-        
+                        # Dodanie nowej wartości do okna pomiarów
+                        window['simMultiline'].print(newValue)
+
+                        # Rysowanie wykresów
+                        ax0.cla()   # Wyczyszczenie
+                        ax0.plot(t0_values) # Wykres
+                        fig_agg0.draw() # Rysowanie
+
+                        ax1.cla()
+                        ax1.plot(t1_values)
+                        fig_agg1.draw()
+
+                        ax2.cla()
+                        ax2.plot(t2_values)
+                        fig_agg2.draw()
+
     
+                except Exception as e:  # Obsługa błędów
+                    print('Błąd\n' + str(e))
+
+    #Zamknięcie okna
+    window.close
