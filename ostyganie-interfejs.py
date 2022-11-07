@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt # Też wykresy
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, FigureCanvasAgg
 from matplotlib.figure import Figure
 from layout import programLayout, windowInfo, figSize
+import manual # Instrukcja obsługi
 
 
 mpl.use('TkAgg')
@@ -149,7 +150,7 @@ if __name__ == '__main__':
                 connected = False
 
             # Przycisk zapisywania
-            elif event == 'SaveButton': 
+            elif event == 'saveButton': 
                 saveFile()
 
             # Przycisk odświeżenia portu
@@ -158,12 +159,15 @@ if __name__ == '__main__':
                 values['portList'] = list_com_win()
                 window['portList'].Update(values=list_com_win())
 
+            elif event == 'helpButton':
+                psg.popup(manual.ostyganie_man, title = 'Instrukcja obsługi')
+
             else:
                 try:
                     if connected == True and arduino.inWaiting() != 0:  # Sprawdzenie połączenia i informacji o oczekujących danych
                         newValue = str(arduino.readline())  # Odczyt linii danych
                         newValue = sub('[^\d\.\;\ \:]', '', newValue)   # Usunięcie nieporządanych znaków
-                        print(newValue)
+                        #print(newValue)
                         try:
                             [time, temp0, temp1, temp2] = newValue.split('; ')  # Rozdzielenie danych do odpowiednich zmiennych
                         except Exception as e:
